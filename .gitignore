@@ -1,0 +1,12 @@
+__pycache__/
+*.egg-info/
+.pytest_cache/
+.solvers/
+.venv/
+build/
+dist/
+out/
+*.flac
+*.wav
+*.mp3
+*.m4a
