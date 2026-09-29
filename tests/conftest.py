@@ -37,6 +37,19 @@ def write_wav(path, y: np.ndarray, sr: int = SR):
     return path
 
 
+@pytest.fixture(autouse=True)
+def _isolated_caches(request, tmp_path, monkeypatch):
+    """Unit tests never read or write the real model caches under ~/.cache.
+    Slow tests run the real pipeline and keep the real caches (no re-downloads)."""
+    if request.node.get_closest_marker("slow"):
+        yield
+        return
+    from music_transcribe import stems
+    monkeypatch.setenv("MUSIC_TRANSCRIBE_CACHE", str(tmp_path / "_model_cache"))
+    monkeypatch.setattr(stems, "_system_checkpoint_dirs", lambda: [])
+    yield
+
+
 @pytest.fixture
 def sr():
     return SR

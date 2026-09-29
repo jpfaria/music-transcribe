@@ -3,6 +3,7 @@ import hashlib
 from pathlib import Path
 
 STAGES = ["tags", "stems", "lyrics", "harmony", "notes", "render"]
+INPUT_HASH_FILE = "input.sha1"
 
 
 class OutDir:
@@ -15,11 +16,37 @@ class OutDir:
         p.mkdir(parents=True, exist_ok=True)
         return p
 
-    def done(self, name: str) -> bool:
-        return (self.root / name / ".done").exists()
+    @staticmethod
+    def _marker(sub: str) -> str:
+        return f".done.{sub}" if sub else ".done"
 
-    def mark_done(self, name: str) -> None:
-        (self.stage(name) / ".done").write_text("ok")
+    def done(self, name: str, sub: str = "") -> bool:
+        return (self.root / name / self._marker(sub)).exists()
+
+    def mark_done(self, name: str, sub: str = "") -> None:
+        (self.stage(name) / self._marker(sub)).write_text("ok")
+
+    def invalidate(self, *stages: str) -> None:
+        """Remove every .done marker (including per-part ones like notes/.done.guitar) of the given
+        stages; with no arguments, of all stages."""
+        for name in stages or STAGES:
+            d = self.root / name
+            if d.is_dir():
+                for m in d.glob(".done*"):
+                    m.unlink(missing_ok=True)
+
+    def check_input(self, audio: Path) -> bool:
+        """Record the input's hash on first use. Returns False (after invalidating every stage and
+        storing the new hash) when the audio differs from the one the cache was built from."""
+        h = self.input_hash(audio)
+        f = self.root / INPUT_HASH_FILE
+        old = f.read_text().strip() if f.exists() else None
+        if old == h:
+            return True
+        if old is not None:
+            self.invalidate()
+        f.write_text(h)
+        return old is None
 
     @staticmethod
     def input_hash(audio: Path) -> str:

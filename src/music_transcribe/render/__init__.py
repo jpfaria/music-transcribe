@@ -14,7 +14,7 @@ def render_all(out: OutDir) -> dict[str, Path]:
     tags = load_json(Tags, tags_path) if tags_path.exists() else Tags()
     harmony = load_json(Harmony, out.stage("harmony") / "harmony.json")
     lp = out.stage("lyrics") / "lyrics.json"
-    lyrics = load_json(LyricLine, lp) if lp.exists() else []
+    lyrics = load_json(LyricLine, lp) if lp.exists() else None   # None = not transcribed, [] = instrumental
     notes_by_inst = {p.stem: load_json(Note, p) for p in sorted(out.stage("notes").glob("*.json"))}
     r = out.stage("render")
     files = {"html": r / "cifra.html", "fragment": r / "cifra.fragment.html", "txt": r / "cifra.txt"}

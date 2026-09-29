@@ -64,7 +64,9 @@ def _chord_at(harmony: Harmony, t: float) -> str:
     return ""
 
 
-def _lyrics(harmony: Harmony, lyrics: list[LyricLine]) -> str:
+def _lyrics(harmony: Harmony, lyrics: list[LyricLine] | None) -> str:
+    if lyrics is None:
+        return '<p class="legend">Letra não transcrita (etapa de letra indisponível nesta execução).</p>'
     if not lyrics:
         return '<p class="legend">Instrumental — nenhuma voz detectada.</p>'
     rows = []
@@ -97,7 +99,7 @@ def _head_parts(title: str) -> list[str]:
     return [f"<title>{escape(title)}</title>", FONTS, f"<style>{CSS}</style>"]
 
 
-def _body_parts(tags: Tags, harmony: Harmony, lyrics: list[LyricLine], notes_by_inst: dict[str, list[Note]]) -> list[str]:
+def _body_parts(tags: Tags, harmony: Harmony, lyrics: list[LyricLine] | None, notes_by_inst: dict[str, list[Note]]) -> list[str]:
     title = tags.title or "Sem título"
     uniq = list(dict.fromkeys(harmony.loop or [c.name for c in harmony.chords]))
     low_chords = sum(1 for c in harmony.chords if c.confidence < 0.3)
@@ -122,7 +124,7 @@ def _body_parts(tags: Tags, harmony: Harmony, lyrics: list[LyricLine], notes_by_
     return parts
 
 
-def cifra_html(tags: Tags, harmony: Harmony, lyrics: list[LyricLine], notes_by_inst: dict[str, list[Note]]) -> str:
+def cifra_html(tags: Tags, harmony: Harmony, lyrics: list[LyricLine] | None, notes_by_inst: dict[str, list[Note]]) -> str:
     title = tags.title or "Sem título"
     parts = _head_parts(title) + _body_parts(tags, harmony, lyrics, notes_by_inst)
     return "\n".join(parts)

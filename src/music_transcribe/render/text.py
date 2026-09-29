@@ -8,7 +8,7 @@ def _mmss(t: float) -> str:
     return f"{int(t // 60)}:{int(t % 60):02d}"
 
 
-def cifra_txt(tags: Tags, harmony: Harmony, lyrics: list[LyricLine], notes_by_inst: dict[str, list[Note]]) -> str:
+def cifra_txt(tags: Tags, harmony: Harmony, lyrics: list[LyricLine] | None, notes_by_inst: dict[str, list[Note]]) -> str:
     out = [f"{tags.title or 'Sem título'} — {tags.artist or 'Artista desconhecido'}",
            f"Tom: {harmony.key} | {harmony.bpm:.0f} BPM em {harmony.meter} | compasso = {harmony.bar_len:.2f} s", ""]
     if harmony.loop:
@@ -18,9 +18,11 @@ def cifra_txt(tags: Tags, harmony: Harmony, lyrics: list[LyricLine], notes_by_in
         flag = "" if c.confidence >= 0.3 else "  (?)"
         out.append(f"{c.bar:4d} {_mmss(c.start)}  {c.name}{flag}")
     out += ["", "LETRA"]
-    if not lyrics:
+    if lyrics is None:
+        out.append("(letra não transcrita)")
+    elif not lyrics:
         out.append("(instrumental)")
-    for l in lyrics:
+    for l in lyrics or []:
         out.append(f"[{_mmss(l.start)}] {l.text}{'' if l.confidence >= 0.6 else ' (?)'}")
     for inst, notes in notes_by_inst.items():
         if inst not in STRING_NAMES:
