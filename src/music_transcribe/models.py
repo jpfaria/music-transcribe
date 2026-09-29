@@ -9,6 +9,7 @@ _HF = "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/"
 WHISPER_MODELS: dict[str, tuple[str, int]] = {
     "large-v3": (_HF + "ggml-large-v3.bin", 3095),
     "medium.en": (_HF + "ggml-medium.en.bin", 1533),
+    "medium": (_HF + "ggml-medium.bin", 1533),
     "small.en": (_HF + "ggml-small.en.bin", 488),
 }
 

@@ -12,6 +12,8 @@ from music_transcribe.harmony import analyze
 from music_transcribe.notes import transcribe_instrument
 from music_transcribe.render import render_all
 
+ALLOWED_INSTRUMENTS = [s for s in STEM_NAMES if s not in ("drums", "vocals")]
+
 
 def _skip(out: OutDir, name: str, force: bool) -> bool:
     return out.done(name) and not force
@@ -35,16 +37,20 @@ def stage_stems(audio: Path, out: OutDir, force: bool = False, device: str = "mp
     return {s: d / f"{s}.wav" for s in STEM_NAMES}
 
 
-def stage_lyrics(audio: Path, out: OutDir, model: str, confirm: Callable[[str, int], bool], force: bool = False) -> None:
+def stage_lyrics(audio: Path, out: OutDir, model: str, confirm: Callable[[str, int], bool], force: bool = False,
+                  language: str = "auto") -> None:
     if _skip(out, "lyrics", force):
         return
     stems = stage_stems(audio, out)
     d = out.stage("lyrics")
     v16 = to_wav(stems["vocals"], d / "vocals16.wav", sr=16000, mono=True)
-    mp = ensure_whisper_model(model, confirm) or ensure_whisper_model("medium.en", confirm)
+    fallback = "medium.en" if language == "en" else "medium"
+    mp = ensure_whisper_model(model, confirm)
+    if mp is None and model != fallback:
+        mp = ensure_whisper_model(fallback, confirm)
     if mp is None:
         raise RuntimeError("nenhum modelo Whisper disponível; rode com --yes ou baixe manualmente")
-    save_json(transcribe(v16, mp), d / "lyrics.json")
+    save_json(transcribe(v16, mp, language=language), d / "lyrics.json")
     out.mark_done("lyrics")
 
 
@@ -60,6 +66,9 @@ def stage_harmony(audio: Path, out: OutDir, force: bool = False) -> Harmony:
 
 
 def stage_notes(audio: Path, out: OutDir, instruments: list[str], force: bool = False) -> None:
+    for inst in instruments:
+        if inst not in ALLOWED_INSTRUMENTS:
+            raise ValueError(f"instrumento desconhecido: {inst!r} (use guitar, bass, piano, other)")
     if _skip(out, "notes", force):
         return
     stems = stage_stems(audio, out)

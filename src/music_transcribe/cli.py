@@ -1,5 +1,6 @@
 from __future__ import annotations
 from pathlib import Path
+from typing import Callable
 import typer
 from music_transcribe import __version__, pipeline
 from music_transcribe.cache import OutDir
@@ -27,60 +28,92 @@ def _confirm(yes: bool):
     return f
 
 
+def _parse_instruments(s: str) -> list[str]:
+    return [i.strip() for i in s.split(",") if i.strip()]
+
+
+def _guarded(fn: Callable[[], None]) -> None:
+    try:
+        fn()
+    except FileNotFoundError as e:
+        typer.echo(
+            f"ferramenta não encontrada (ffmpeg/whisper-cli?). Instale com: brew install ffmpeg whisper-cpp ({e})",
+            err=True,
+        )
+        raise typer.Exit(1)
+    except (RuntimeError, ValueError) as e:
+        typer.echo(str(e), err=True)
+        raise typer.Exit(1)
+
+
 AUDIO = typer.Argument(..., exists=True, dir_okay=False)
-OUT = typer.Option(None, "--out", help="Pasta de saída (padrão: <audio>.transcribe/)")
+OUT = typer.Option(None, "--out", help="Pasta de saída (padrão: <audio-sem-extensão>.transcribe/)")
 FORCE = typer.Option(False, "--force", help="Refaz a etapa mesmo com cache")
 
 
 @app.command()
 def run(audio: Path = AUDIO, out: Path | None = OUT, force: bool = FORCE, yes: bool = typer.Option(False, "--yes"),
         model: str = typer.Option("large-v3", "--model"), instruments: str = typer.Option("guitar,bass,piano", "--instruments"),
-        device: str = typer.Option("mps", "--device")):
+        device: str = typer.Option("mps", "--device"), language: str = typer.Option("auto", "--language")):
     """Roda o pipeline inteiro: tags → stems → lyrics → harmony → notes → render."""
-    o = _out(audio, out)
-    pipeline.stage_tags(audio, o, force)
-    pipeline.stage_stems(audio, o, force, device)
-    pipeline.stage_lyrics(audio, o, model, _confirm(yes), force)
-    pipeline.stage_harmony(audio, o, force)
-    pipeline.stage_notes(audio, o, [i.strip() for i in instruments.split(",") if i.strip()], force)
-    files = pipeline.stage_render(o)
-    for k, p in files.items():
-        typer.echo(f"{k}: {p}")
+    def body():
+        o = _out(audio, out)
+        typer.echo("→ tags")
+        pipeline.stage_tags(audio, o, force)
+        typer.echo("→ stems (demucs, pode levar minutos)")
+        pipeline.stage_stems(audio, o, force, device)
+        typer.echo("→ lyrics")
+        pipeline.stage_lyrics(audio, o, model, _confirm(yes), force=force, language=language)
+        typer.echo("→ harmony")
+        pipeline.stage_harmony(audio, o, force)
+        typer.echo("→ notes")
+        pipeline.stage_notes(audio, o, _parse_instruments(instruments), force)
+        typer.echo("→ render")
+        files = pipeline.stage_render(o)
+        for k, p in files.items():
+            typer.echo(f"{k}: {p}")
+    _guarded(body)
 
 
 @app.command()
 def tags(audio: Path = AUDIO, out: Path | None = OUT, force: bool = FORCE):
-    pipeline.stage_tags(audio, _out(audio, out), force)
+    _guarded(lambda: pipeline.stage_tags(audio, _out(audio, out), force))
 
 
 @app.command()
 def stems(audio: Path = AUDIO, out: Path | None = OUT, force: bool = FORCE, device: str = typer.Option("mps", "--device")):
-    for k, p in pipeline.stage_stems(audio, _out(audio, out), force, device).items():
-        typer.echo(f"{k}: {p}")
+    def body():
+        for k, p in pipeline.stage_stems(audio, _out(audio, out), force, device).items():
+            typer.echo(f"{k}: {p}")
+    _guarded(body)
 
 
 @app.command()
 def lyrics(audio: Path = AUDIO, out: Path | None = OUT, force: bool = FORCE, yes: bool = typer.Option(False, "--yes"),
-           model: str = typer.Option("large-v3", "--model")):
-    pipeline.stage_lyrics(audio, _out(audio, out), model, _confirm(yes), force)
+           model: str = typer.Option("large-v3", "--model"), language: str = typer.Option("auto", "--language")):
+    _guarded(lambda: pipeline.stage_lyrics(audio, _out(audio, out), model, _confirm(yes), force=force, language=language))
 
 
 @app.command()
 def harmony(audio: Path = AUDIO, out: Path | None = OUT, force: bool = FORCE):
-    h = pipeline.stage_harmony(audio, _out(audio, out), force)
-    typer.echo(f"{h.key} · {h.bpm} BPM · {h.meter} · loop {h.loop}")
+    def body():
+        h = pipeline.stage_harmony(audio, _out(audio, out), force)
+        typer.echo(f"{h.key} · {h.bpm} BPM · {h.meter} · loop {h.loop}")
+    _guarded(body)
 
 
 @app.command()
 def notes(audio: Path = AUDIO, out: Path | None = OUT, force: bool = FORCE,
           instruments: str = typer.Option("guitar,bass,piano", "--instruments")):
-    pipeline.stage_notes(audio, _out(audio, out), [i.strip() for i in instruments.split(",")], force)
+    _guarded(lambda: pipeline.stage_notes(audio, _out(audio, out), _parse_instruments(instruments), force))
 
 
 @app.command()
-def render(audio: Path = AUDIO, out: Path | None = OUT):
-    for k, p in pipeline.stage_render(_out(audio, out)).items():
-        typer.echo(f"{k}: {p}")
+def render(audio: Path = AUDIO, out: Path | None = OUT, force: bool = FORCE):
+    def body():
+        for k, p in pipeline.stage_render(_out(audio, out)).items():
+            typer.echo(f"{k}: {p}")
+    _guarded(body)
 
 
 if __name__ == "__main__":

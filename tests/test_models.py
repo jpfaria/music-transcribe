@@ -20,3 +20,7 @@ def test_accepted_download_calls_downloader_with_url(tmp_path):
     out = ensure_whisper_model("medium.en", confirm=lambda n, mb: True, cache_dir=tmp_path, downloader=dl)
     assert out and out.exists()
     assert got["url"] == WHISPER_MODELS["medium.en"][0]
+
+
+def test_medium_multilingual_model_is_registered():
+    assert WHISPER_MODELS["medium"][0].endswith("ggml-medium.bin")
