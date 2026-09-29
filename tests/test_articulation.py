@@ -1,5 +1,6 @@
 import numpy as np
-from music_transcribe.notes.articulation import classify_contour, detect_legato
+import pytest
+from music_transcribe.notes.articulation import classify_contour, detect_legato, onset_ratio
 from music_transcribe.schema import Note
 
 HOP = 256 / 22050
@@ -54,3 +55,11 @@ def test_hammer_and_pull_on_weak_onset():
 def test_normal_attack_is_plain():
     p, c = Note(0, 0.5, 58, 0.8), Note(0.6, 1.0, 61, 0.8)
     assert detect_legato(p, c, gap_voiced_frac=0.1, onset_ratio=1.0) == ""
+
+
+def test_onset_ratio_accepts_precomputed_envelope():
+    sr = 22050
+    oenv = np.array([1.0] * 10 + [5.0] + [1.0] * 10)
+    t = 10 * 512 / sr  # frame time of the peak
+    ratio = onset_ratio(np.array([]), sr, t, oenv=oenv)
+    assert ratio == pytest.approx(5.0)

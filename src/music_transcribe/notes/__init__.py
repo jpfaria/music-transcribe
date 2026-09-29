@@ -21,6 +21,7 @@ def _gap_voiced(y: np.ndarray, sr: int, a: float, b: float) -> float:
 
 
 def transcribe_instrument(wav: Path, instrument: str, harmony: Harmony, predictor=None) -> list[Note]:
+    import librosa
     y, sr = load_mono(wav, 22050)
     notes = raw_notes(wav, predictor=predictor)
     bleed = mark_bleed_runs(notes)
@@ -29,12 +30,13 @@ def transcribe_instrument(wav: Path, instrument: str, harmony: Harmony, predicto
         cents, voiced = f0_contour(y, sr, n)
         n.articulation = classify_contour(cents, hop_s)
         n.confidence, n.reason = score(n, voiced, i in bleed)
+    oenv = librosa.onset.onset_strength(y=y, sr=sr, hop_length=512)
     for i in range(1, len(notes)):
         p, c = notes[i - 1], notes[i]
         if c.start - p.end > 0.15 or p.articulation.startswith("bend"):
             continue
         art = detect_legato(p, c, _gap_voiced(y, sr, p.end, c.start) if c.start > p.end else 1.0,
-                            onset_ratio(y, sr, c.start))
+                            onset_ratio(y, sr, c.start, oenv=oenv))
         if art.startswith("slide"):
             p.articulation = p.articulation or art
         elif art:

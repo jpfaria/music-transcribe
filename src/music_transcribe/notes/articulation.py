@@ -49,8 +49,9 @@ def detect_legato(prev: Note, cur: Note, gap_voiced_frac: float, onset_ratio: fl
     return ""
 
 
-def onset_ratio(y: np.ndarray, sr: int, t: float, window: float = 0.05) -> float:
-    oenv = librosa.onset.onset_strength(y=y, sr=sr, hop_length=512)
+def onset_ratio(y: np.ndarray, sr: int, t: float, window: float = 0.05, oenv: np.ndarray | None = None) -> float:
+    if oenv is None:
+        oenv = librosa.onset.onset_strength(y=y, sr=sr, hop_length=512)
     times = librosa.frames_to_time(np.arange(len(oenv)), sr=sr, hop_length=512)
     m = (times >= t - window) & (times <= t + window)
     med = np.median(oenv) + 1e-9
