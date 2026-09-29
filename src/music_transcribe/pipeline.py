@@ -7,7 +7,7 @@ from music_transcribe.tags import read_tags
 from music_transcribe.stems import separate, STEM_NAMES
 from music_transcribe.audio import to_wav
 from music_transcribe.models import ensure_whisper_model
-from music_transcribe.lyrics import transcribe
+from music_transcribe.lyrics import transcribe, vocal_activity_for, filter_by_activity
 from music_transcribe.harmony import analyze
 from music_transcribe.notes import transcribe_instrument
 from music_transcribe.render import render_all
@@ -44,13 +44,21 @@ def stage_lyrics(audio: Path, out: OutDir, model: str, confirm: Callable[[str, i
     stems = stage_stems(audio, out)
     d = out.stage("lyrics")
     v16 = to_wav(stems["vocals"], d / "vocals16.wav", sr=16000, mono=True)
+    regions = vocal_activity_for(v16)
+    total_active = sum(e - s for s, e in regions)
+    if total_active < 1.0:
+        print("sem voz detectada")
+        save_json([], d / "lyrics.json")
+        out.mark_done("lyrics")
+        return
     fallback = "medium.en" if language == "en" else "medium"
     mp = ensure_whisper_model(model, confirm)
     if mp is None and model != fallback:
         mp = ensure_whisper_model(fallback, confirm)
     if mp is None:
         raise RuntimeError("nenhum modelo Whisper disponível; rode com --yes ou baixe manualmente")
-    save_json(transcribe(v16, mp, language=language), d / "lyrics.json")
+    lines = filter_by_activity(transcribe(v16, mp, language=language), regions)
+    save_json(lines, d / "lyrics.json")
     out.mark_done("lyrics")
 
 
