@@ -1,0 +1,12 @@
+{
+  "name": "music-transcribe",
+  "description": "Letra, cifra e tab de uma música a partir do áudio.",
+  "owner": { "name": "João Paulo Faria", "email": "jpfaria@gmail.com" },
+  "plugins": [
+    {
+      "name": "music-transcribe",
+      "source": { "source": "github", "repo": "jpfaria/music-transcribe" },
+      "description": "Letra, cifra com diagramas e tab com articulações de uma música a partir do áudio, tudo local."
+    }
+  ]
+}

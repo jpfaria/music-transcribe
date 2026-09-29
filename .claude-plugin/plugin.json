@@ -1,0 +1,11 @@
+{
+  "name": "music-transcribe",
+  "displayName": "Music Transcribe",
+  "description": "Letra, cifra com diagramas e tab com articulações de uma música a partir do áudio, tudo local.",
+  "version": "0.1.0",
+  "author": { "name": "João Paulo Faria", "email": "jpfaria@gmail.com" },
+  "keywords": ["music", "transcription", "chords", "tab", "lyrics", "whisper", "demucs"],
+  "homepage": "https://github.com/jpfaria/music-transcribe",
+  "repository": "https://github.com/jpfaria/music-transcribe.git",
+  "license": "MIT"
+}
