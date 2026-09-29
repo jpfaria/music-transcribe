@@ -11,7 +11,7 @@ def ramp(n, a, b):
 
 
 def test_flat_is_plain():
-    assert classify_contour(np.zeros(60) + np.random.randn(60) * 5, HOP) == ""
+    assert classify_contour(np.zeros(60) + np.random.default_rng(0).standard_normal(60) * 5, HOP) == ""
 
 
 def test_full_bend():

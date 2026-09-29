@@ -44,9 +44,10 @@ def _isolated_caches(request, tmp_path, monkeypatch):
     if request.node.get_closest_marker("slow"):
         yield
         return
-    from music_transcribe import stems
+    from music_transcribe import stems, models
     monkeypatch.setenv("MUSIC_TRANSCRIBE_CACHE", str(tmp_path / "_model_cache"))
     monkeypatch.setattr(stems, "_system_checkpoint_dirs", lambda: [])
+    monkeypatch.setattr(models, "WHISPER_CPP_DIR", tmp_path / "_whisper_cpp")
     yield
 
 

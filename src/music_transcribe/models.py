@@ -18,10 +18,22 @@ def default_cache_dir() -> Path:
     return Path(os.environ.get("MUSIC_TRANSCRIBE_CACHE", Path.home() / ".cache" / "music-transcribe"))
 
 
+# whisper.cpp's own download script keeps models here; reused as-is, never written to.
+WHISPER_CPP_DIR = Path.home() / ".cache" / "whisper"
+
+
 def _curl(url: str, dst: Path) -> None:
     tmp = dst.with_suffix(".part")
-    subprocess.run(["curl", "-L", "--fail", "--progress-bar", "-o", str(tmp), url], check=True)
+    try:
+        subprocess.run(["curl", "-L", "--fail", "--progress-bar", "-o", str(tmp), url], check=True)
+    except subprocess.CalledProcessError as e:
+        tmp.unlink(missing_ok=True)
+        raise RuntimeError(f"download falhou: {url} (curl saiu com {e.returncode})") from e
     tmp.rename(dst)
+
+
+def _usable(p: Path) -> bool:
+    return p.exists() and p.stat().st_size > 0
 
 
 def ensure_whisper_model(
@@ -29,13 +41,19 @@ def ensure_whisper_model(
     confirm: Callable[[str, int], bool],
     cache_dir: Path | None = None,
     downloader: Callable[[str, Path], None] | None = None,
+    reuse_dir: Path | None = None,
 ) -> Path | None:
+    if name not in WHISPER_MODELS:
+        raise ValueError(f"modelo Whisper desconhecido: {name!r} (use {', '.join(WHISPER_MODELS)})")
     url, size_mb = WHISPER_MODELS[name]
     cache = Path(cache_dir or default_cache_dir())
     cache.mkdir(parents=True, exist_ok=True)
     dst = cache / f"ggml-{name}.bin"
-    if dst.exists() and dst.stat().st_size > 0:
+    if _usable(dst):
         return dst
+    shared = Path(reuse_dir or WHISPER_CPP_DIR) / f"ggml-{name}.bin"
+    if _usable(shared):
+        return shared
     if not confirm(name, size_mb):
         return None
     (downloader or _curl)(url, dst)

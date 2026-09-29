@@ -11,7 +11,7 @@ def test_analyze_handles_ragged_stem_lengths(tmp_path):
     bass = sine_note(midi_to_hz(34), 3.0, SR, harmonics=2)  # Bb1
     guitar = sine_note(midi_to_hz(58), 3.1, SR, harmonics=3)
     other = sine_note(midi_to_hz(62), 2.9, SR, harmonics=3)
-    drums = (0.2 * np.random.randn(int(3.4 * SR))).astype(np.float32)
+    drums = (0.2 * np.random.default_rng(0).standard_normal(int(3.4 * SR))).astype(np.float32)
 
     stems = {
         "bass": write_wav(tmp_path / "bass.wav", bass),
