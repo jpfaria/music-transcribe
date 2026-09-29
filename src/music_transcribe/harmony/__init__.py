@@ -14,12 +14,23 @@ HARMONIC = ["bass", "piano", "guitar", "other"]
 
 def analyze(stems: dict[str, Path], sr: int = 22050, mix: Path | None = None) -> Harmony:
     parts = {k: load_mono(stems[k], sr)[0] for k in HARMONIC if k in stems}
+    if not parts:
+        raise RuntimeError("no harmonic stems found (need at least one of bass, piano, guitar, other)")
     bass = parts.get("bass")
     n = max(len(v) for v in parts.values())
     h = np.zeros(n, dtype=np.float32)
     for v in parts.values():
         h[: len(v)] += v
-    full = load_mono(mix, sr)[0] if mix else h + (load_mono(stems["drums"], sr)[0] if "drums" in stems else 0)
+    if mix:
+        full = load_mono(mix, sr)[0]
+    elif "drums" in stems:
+        drums = load_mono(stems["drums"], sr)[0]
+        full_n = max(n, len(drums))
+        full = np.zeros(full_n, dtype=np.float32)
+        full[: len(h)] += h
+        full[: len(drums)] += drums
+    else:
+        full = h
     runs = bass_roots(bass, sr) if bass is not None else []
     changes = root_changes(runs)
     bpm, meter = estimate_tempo(full, sr, changes)

@@ -3,7 +3,11 @@ import numpy as np
 
 
 def fit_grid(root_changes: list[float], bar_len: float) -> float:
-    """Return bar0 in [0, bar_len) such that change times sit closest to k*bar_len + bar0."""
+    """Return bar0 such that change times sit closest to k*bar_len + bar0.
+
+    bar0 is in (root_changes[0] - bar_len, root_changes[0]]; it may be negative
+    when the first bar is a partial pickup (song starts mid-bar).
+    """
     if not root_changes:
         return 0.0
     ch = np.asarray(root_changes)
