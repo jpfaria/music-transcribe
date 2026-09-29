@@ -36,3 +36,16 @@ The review's own "after merge" triage list was not in the files given to the fix
    (O(bars×notes)). Thresholds 0.3/0.6 are magic numbers.
 9. Unused `--accent-ink` CSS token.
 10. `run --force` re-runs demucs (a literal reading of the spec). Consider `--force-from <stage>`.
+
+## Residuais da re-review final (2026-09-29) — pós-merge
+
+- `render_all` renderiza todo `notes/*.json`, inclusive JSON antigo de instrumento não pedido ou invalidado. Renderizar só os instrumentos com `.done.<inst>` ou apagar o JSON na invalidação.
+- `refine_bar_len`: `k` sem teto; um gap ≥ ~19 compassos com erro de 4% no tempograma pode deslocar o índice. Limitar `k` (ex.: ≤ 8) ou iterar o ajuste.
+- `detect_loop`: empate resolvido por ordem de aparição (Ebsus2 × Ebm 4–4). Preferir a tríade sobre sus, ou mostrar "Ebm/Ebsus2".
+- Flag `chord` no baixo dispara em dobras de oitava; ignorar notas simultâneas a uma oitava.
+- `fit_grid`: para 0 < bar0 ≤ 5% do compasso, [0, bar0) fica fora do compasso 1; alinhar docstring e comportamento.
+- `ensure_demucs_weights`: symlink quebrado passa como "encontrado"; validar o alvo.
+- `check_input`: pasta de saída anterior a esta versão (sem `input.sha1`) é adotada sem invalidar.
+- SKILL.md: linha "um `run` simples mantém notas velhas" está desatualizada (harmony recomputado invalida notes); lista de `reason` não cita `chord`.
+- Rodar uma música real com `large-v3` (só `small.en` foi medido).
+- Calibrar o corte 0.3 de confiança de acorde com mais músicas (hoje é heurístico: margem × 10).
