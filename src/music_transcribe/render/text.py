@@ -4,6 +4,7 @@ from music_transcribe.render.tab import bars_for, STRING_NAMES
 
 
 def _mmss(t: float) -> str:
+    t = max(0.0, t)
     return f"{int(t // 60)}:{int(t % 60):02d}"
 
 
