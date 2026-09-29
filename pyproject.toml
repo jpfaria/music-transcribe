@@ -33,3 +33,6 @@ packages = ["src/music_transcribe"]
 testpaths = ["tests"]
 markers = ["slow: full pipeline with real models; run manually"]
 addopts = "-m 'not slow'"
+filterwarnings = [
+    "ignore::DeprecationWarning:audioread.rawread",
+]
