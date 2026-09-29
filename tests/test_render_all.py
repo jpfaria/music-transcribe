@@ -18,6 +18,11 @@ def test_render_all_with_no_notes(tmp_path: Path):
     files = render_all(out)
 
     assert files["html"].exists()
+    assert files["fragment"].exists()
     assert files["txt"].exists()
     assert "guitar" not in files and "bass" not in files and "piano" not in files
     assert out.done("render")
+
+    html = files["html"].read_text(encoding="utf-8")
+    assert html.startswith("<!doctype html>")
+    assert "Instrumental" in html

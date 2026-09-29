@@ -87,11 +87,11 @@ def _from_dict(cls: type[T], d: dict[str, Any]) -> T:
 
 def save_json(obj: Any, path: Path) -> None:
     data = [asdict(o) for o in obj] if isinstance(obj, list) else asdict(obj)
-    Path(path).write_text(json.dumps(data, ensure_ascii=False, indent=1))
+    Path(path).write_text(json.dumps(data, ensure_ascii=False, indent=1), encoding="utf-8")
 
 
 def load_json(cls: type[T], path: Path) -> T | list[T]:
-    data = json.loads(Path(path).read_text())
+    data = json.loads(Path(path).read_text(encoding="utf-8"))
     if isinstance(data, list):
         return [_from_dict(cls, x) for x in data]
     return _from_dict(cls, data)

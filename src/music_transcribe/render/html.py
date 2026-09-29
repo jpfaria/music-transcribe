@@ -2,7 +2,7 @@ from __future__ import annotations
 from html import escape
 from music_transcribe.schema import Tags, Harmony, LyricLine, Note, pitch_name
 from music_transcribe.render.chord_diagram import voicing_for, svg
-from music_transcribe.render.tab import bars_for, STRING_NAMES
+from music_transcribe.render.tab import bars_for
 
 CSS = """
 :root{--bg:#f6f3ee;--ink:#1c1a1f;--muted:#6b6470;--rule:#dcd6cc;--panel:#fbf9f5;--accent:#b8651a;--accent-ink:#7a4110;--chord:#2a5f8a;--pre:#fffdf9;--low:#b3261e;--mid:#8a6d00}
@@ -93,11 +93,15 @@ def _tab_section(inst: str, notes: list[Note], harmony: Harmony) -> str:
             f'<div class="bars">{"".join(figs)}</div></section>')
 
 
-def cifra_html(tags: Tags, harmony: Harmony, lyrics: list[LyricLine], notes_by_inst: dict[str, list[Note]]) -> str:
+def _head_parts(title: str) -> list[str]:
+    return [f"<title>{escape(title)}</title>", FONTS, f"<style>{CSS}</style>"]
+
+
+def _body_parts(tags: Tags, harmony: Harmony, lyrics: list[LyricLine], notes_by_inst: dict[str, list[Note]]) -> list[str]:
     title = tags.title or "Sem título"
     uniq = list(dict.fromkeys(harmony.loop or [c.name for c in harmony.chords]))
     low_chords = sum(1 for c in harmony.chords if c.confidence < 0.3)
-    parts = [f"<title>{escape(title)}</title>", FONTS, f"<style>{CSS}</style>", '<div class="wrap">',
+    parts = ['<div class="wrap">',
              "<header>", f'<div class="eyebrow">{escape(tags.artist)}{" · " + escape(tags.album) if tags.album else ""}</div>',
              f"<h1>{escape(title)}</h1>",
              f'<div class="meta"><span>Tom <b>{escape(harmony.key)}</b></span><span>Andamento <b>{harmony.bpm:.0f} BPM · {harmony.meter}</b></span><span>Compasso <b>{harmony.bar_len:.2f} s</b></span></div>']
@@ -115,4 +119,19 @@ def cifra_html(tags: Tags, harmony: Harmony, lyrics: list[LyricLine], notes_by_i
         rows = "".join(f"<div class='line conf-{n.confidence}'><time>{_mmss(n.start)}</time><div>{escape(pitch_name(n.pitch))}</div></div>" for n in notes_by_inst["piano"])
         parts.append(f"<section><h2>Piano · notas</h2>{rows}</section>")
     parts.append("</div>")
+    return parts
+
+
+def cifra_html(tags: Tags, harmony: Harmony, lyrics: list[LyricLine], notes_by_inst: dict[str, list[Note]]) -> str:
+    title = tags.title or "Sem título"
+    parts = _head_parts(title) + _body_parts(tags, harmony, lyrics, notes_by_inst)
     return "\n".join(parts)
+
+
+def full_document(fragment: str, lang: str = "pt-BR") -> str:
+    """Wrap the cifra_html() fragment into a complete, self-contained HTML document for disk output."""
+    split_at = fragment.index('<div class="wrap">')
+    head, body = fragment[:split_at].rstrip("\n"), fragment[split_at:]
+    return (f'<!doctype html>\n<html lang="{lang}"><head><meta charset="utf-8">'
+            f'<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">'
+            f"{head}</head><body>{body}</body></html>")

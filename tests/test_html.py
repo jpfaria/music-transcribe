@@ -1,4 +1,4 @@
-from music_transcribe.render.html import cifra_html
+from music_transcribe.render.html import cifra_html, full_document
 from music_transcribe.schema import Tags, Harmony, Chord, LyricLine, Note
 
 H = Harmony(52, "12/8", "Bbm", 0.75, 4.64,
@@ -20,3 +20,12 @@ def test_html_sections_and_confidence_markers():
 def test_html_instrumental():
     html = cifra_html(Tags(), H, [], {})
     assert "instrumental" in html.lower()
+
+
+def test_full_document_wraps_fragment():
+    fragment = cifra_html(Tags(title="Midnight"), H, [], {})
+    html = full_document(fragment)
+    assert html.startswith("<!doctype html>")
+    assert '<meta charset="utf-8">' in html
+    assert html.index("<title>") < html.index("</head>")
+    assert html.endswith("</html>")
