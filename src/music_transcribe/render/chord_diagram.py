@@ -7,7 +7,6 @@ from music_transcribe.harmony.chords import TEMPLATES, SUFFIX
 
 OPEN = [40, 45, 50, 55, 59, 64]  # low E → high e
 _SUFFIX_TO_Q = {v: k for k, v in SUFFIX.items()}
-_QUAL_RE = sorted(_SUFFIX_TO_Q, key=len, reverse=True)
 
 # movable shapes: offsets from the root fret; root string index (0 = low E) given by key
 # E-shapes (root on string 0) and A-shapes (root on string 1). -1 = mute.
@@ -43,7 +42,25 @@ def parse_chord(name: str) -> tuple[int, str, int | None]:
     return root_pc, q, bass_pc
 
 
+def _valid(v: Voicing | None, tones: set[int]) -> bool:
+    """A voicing is usable when every chord tone still sounds and the
+    fretted (non-open, non-muted) notes fit inside a 5-fret diagram window."""
+    if v is None:
+        return False
+    sounding = [f for f in v.frets if f >= 0]
+    if not sounding:
+        return False
+    got = {(o + f) % 12 for o, f in zip(OPEN, v.frets) if f >= 0}
+    if not (tones <= got):
+        return False
+    nonzero = [f for f in v.frets if f > 0]
+    if nonzero and max(nonzero) - min(nonzero) > 4:
+        return False
+    return True
+
+
 def _shape(root_pc: int, q: str) -> Voicing | None:
+    tones = {(root_pc + iv) % 12 for iv in TEMPLATES[q]}
     options = []
     for shapes, root_string in ((E_SHAPES, 0), (A_SHAPES, 1)):
         if q not in shapes:
@@ -63,7 +80,8 @@ def _shape(root_pc: int, q: str) -> Voicing | None:
         played = [i for i, f in enumerate(frets) if f >= 0]
         if sum(1 for i in played if frets[i] == base) >= 2:
             barre = (base, played[0], played[-1])
-    return Voicing(frets, base if base > 0 else 1, barre)
+    v = Voicing(frets, base if base > 0 else 1, barre)
+    return v if _valid(v, tones) else None
 
 
 def _fallback(root_pc: int, q: str) -> Voicing | None:
@@ -82,7 +100,25 @@ def _fallback(root_pc: int, q: str) -> Voicing | None:
             n_mute = frets.count(-1)
             if best is None or n_mute < best[0]:
                 best = (n_mute, Voicing(frets, base))
-    return best[1] if best else None
+    v = best[1] if best else None
+    return v if _valid(v, tones) else None
+
+
+def _base_of(frets: list[int]) -> int:
+    """Fret shown at the top-left of the diagram: the lowest fretted (non-open) note, or 1 in open position."""
+    nonzero = [f for f in frets if f > 0]
+    return min(nonzero) if nonzero else 1
+
+
+def _with_bass(v: Voicing, bass_pc: int) -> Voicing:
+    """Candidate voicing with the bass note seated on the lowest reachable string, muting the strings below it."""
+    lo = min(range(1, 3), key=lambda s: abs(((bass_pc - OPEN[s]) % 12) - v.base))
+    f = (bass_pc - OPEN[lo]) % 12
+    new = list(v.frets)
+    for s in range(lo):
+        new[s] = -1
+    new[lo] = f
+    return Voicing(new, _base_of(new), None)
 
 
 def voicing_for(name: str) -> Voicing | None:
@@ -90,17 +126,17 @@ def voicing_for(name: str) -> Voicing | None:
         root_pc, q, bass_pc = parse_chord(name)
     except ValueError:
         return None
+    tones = {(root_pc + iv) % 12 for iv in TEMPLATES[q]}
     v = _shape(root_pc, q) or _fallback(root_pc, q)
-    if v and bass_pc is not None and bass_pc != root_pc:
-        # try to put the bass note on the lowest sounding string within reach
-        lo = min(range(1, 3), key=lambda s: abs(((bass_pc - OPEN[s]) % 12) - v.base))
-        f = (bass_pc - OPEN[lo]) % 12
-        if abs(f - v.base) <= 3:
-            new = list(v.frets)
-            for s in range(lo):
-                new[s] = -1
-            new[lo] = f
-            v = Voicing(new, min(v.base, f) if f > 0 else v.base, None)
+    if v is None:
+        return None
+    if bass_pc is not None and bass_pc != root_pc:
+        candidate = _with_bass(v, bass_pc)
+        lowest_pc = next(((o + f) % 12 for o, f in zip(OPEN, candidate.frets) if f >= 0), None)
+        if _valid(candidate, tones) and lowest_pc == bass_pc:
+            return candidate
+        # inversion isn't reachable cleanly: a correct root-position diagram
+        # beats an invalid or misleading slash-bass one.
     return v
 
 

@@ -31,3 +31,21 @@ def test_svg_has_dots_and_label():
     v = voicing_for("Bbm")
     s = svg(v, "Bbm")
     assert s.startswith("<svg") and "<circle" in s and "Bbm" in s
+
+
+@pytest.mark.parametrize("name", ["D7/F#", "Dbmaj7/F", "C9/E", "Eb9/G", "Db/F", "Bbm/Db"])
+def test_slash_bass_voicing_is_valid(name):
+    v = voicing_for(name)
+    assert v is not None, name
+    root, q, bass_pc = parse_chord(name)
+    want = {(root + iv) % 12 for iv in TEMPLATES[q]}
+    assert want <= pcs(v), (name, v)
+
+    sounding = [f for f in v.frets if f > 0]
+    if sounding:
+        assert max(sounding) - min(sounding) <= 4, (name, v)
+
+    if "/" in name:
+        lowest_pc = next(((o + f) % 12 for o, f in zip(OPEN, v.frets) if f >= 0), None)
+        base_name = name.split("/")[0]
+        assert lowest_pc == bass_pc or v == voicing_for(base_name), (name, v)
