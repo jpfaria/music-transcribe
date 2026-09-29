@@ -14,8 +14,7 @@
 - The vocal-activity gate is −40 dB relative to the vocals stem's own peak. On a near-silent stem
   (instrumental; demucs residue peaks at about −62 dBFS) the whole track counts as active, so whisper can
   hallucinate. demucs applies a random time shift, so the residue, and therefore the lyrics, change from run
-  to run: on the synthetic fixture, 4 of 8 runs on the new code and 4 of 7 on the pre-wave code (ef9b851)
-  gave non-empty lyrics. Whisper itself is deterministic on a fixed wav.
+  to run. On the synthetic fixture, 10 of 14 runs on the new code and 7 of 11 on the pre-wave code (ef9b851) gave non-empty lyrics (same rate on cpu and mps demucs), so the slow test fails about 2 runs in 3. Whisper itself is deterministic on a fixed wav.
 - `--language auto` can misdetect on short vocal passages.
 - Chord confidence on dense real mixes is mostly < 0.3, and the loop may not be detected (real run).
 
