@@ -29,21 +29,34 @@ def bar_tab(notes: list[Note], bar_start: float, bar_len: float, meter: str, ins
     cells = 12 if meter == "12/8" else 16
     per_beat = cells // 4
     sub = bar_len / cells
-    grid: list[list[str]] = [["-" * CELL] * cells for _ in names]
-    for n in sorted(notes, key=lambda x: x.start):
-        if n.string is None or n.fret is None or not (bar_start <= n.start < bar_start + bar_len):
-            continue
-        k = min(cells - 1, int(round((n.start - bar_start) / sub)))
-        t = token(n)[:CELL].ljust(CELL, "-")
-        grid[n.string][k] = t
+    in_bar = [n for n in notes if n.string is not None and n.fret is not None
+              and bar_start <= n.start < bar_start + bar_len]
+    cell_w = max(CELL, max((len(token(n)) for n in in_bar), default=0) + 1)
+    empty = "-" * cell_w
+    grid: list[list[str]] = [[empty] * cells for _ in names]
+    dropped = 0
+    for n in sorted(in_bar, key=lambda x: x.start):
+        k0 = min(cells - 1, int(round((n.start - bar_start) / sub)))
+        t = token(n).ljust(cell_w, "-")
+        k = k0
+        while k < cells and grid[n.string][k] != empty:
+            k += 1
+        if k < cells:
+            grid[n.string][k] = t
+        else:
+            dropped += 1
     lines = []
     for s, name in enumerate(names):
         row = "".join(("|" if k % per_beat == 0 else "") + grid[s][k] for k in range(cells))
         lines.append(f"{name}|{row}|")
+    if dropped:
+        lines.append(f"  * {dropped} nota(s) omitida(s) por colisão")
     return "\n".join(lines)
 
 
 def bars_for(notes: list[Note], harmony: Harmony, instrument: str) -> list[tuple[int, str]]:
+    if harmony.bar_len <= 0:
+        raise ValueError("bar_len must be positive")
     if not notes:
         return []
     last = max(n.start for n in notes)
