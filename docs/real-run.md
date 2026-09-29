@@ -157,3 +157,15 @@ Why the loop still fails (nothing tuned):
   are in bars 36–45 (the ending).
 - For comparison only (not applied): counting a sus chord as matching either family gives p=4 **0.822**. Keeping
   the ruling's families but using bars 1–40 only gives **0.833**. Both would detect the loop.
+
+## Run 5: sus2/sus4 family undetermined in `detect_loop` (2026-09-29, `--force`)
+
+Same command. Times: tags <1 s, stems 20 s (MPS), lyrics 5 s, harmony 6 s, notes 28 s, render <1 s; 59 s total.
+The grid is unchanged: 53.0 BPM, 12/8, Bbm, bar_len 4.5298, bar0 −2.953.
+
+- **loop: Bbm | Bbm | Db | Ebsus2**. This is the expected Bbm | Db | Ebm | Bbm, started one bar earlier because bar 1
+  is the intro pickup.
+- At the Eb position the full-name vote ties: Ebsus2 ×4 vs Ebm ×4 (Eb ×2, Bbsus4 ×1, Bbm ×1). Ebsus2 is shown
+  because it was seen first.
+- chords < 0.3: **34 / 49** (0.3–0.6: 12, ≥ 0.6: 3). The confidences are the same as in run 4.
+- First 12 chords: Bbsus4 Bbm Db Ebsus2 Bbm Bbm Db Ebm Bbm Bbm Db Ebm.

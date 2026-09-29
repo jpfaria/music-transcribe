@@ -54,7 +54,7 @@ def test_estimate_key_minor():
 
 def test_chord_family():
     from music_transcribe.harmony.chords import chord_family
-    assert chord_family("Ebsus2") == "EbM" and chord_family("Db") == "DbM" and chord_family("Bb7") == "BbM"
+    assert chord_family("Ebsus2") == "Eb?" and chord_family("Db") == "DbM" and chord_family("Bb7") == "BbM"
     assert chord_family("Bbm") == "Bbm" and chord_family("Bbm7/F") == "Bbm" and chord_family("Bm7b5") == "Bm"
 
 
@@ -68,3 +68,12 @@ def test_confidence_scale_margin_times_ten():
     c = np.zeros(12); c[[10, 1, 5]] = 1.0          # Bbm triad
     ch = chord_for_bar(c, 10, bar=1, start=0.0)
     assert ch.name == "Bbm" and 0 < ch.confidence <= 1.0
+
+
+def test_sus_family_matches_either_family_on_same_root():
+    from music_transcribe.harmony.chords import chord_family, same_family
+    f = chord_family
+    assert same_family(f("Ebsus2"), f("Ebm")) and same_family(f("Bbsus4"), f("Bb7"))
+    assert not same_family(f("Eb"), f("Ebm"))
+    assert not same_family(f("Ebsus2"), f("Bbm"))                     # root must match
+    assert detect_loop(["Bbm", "Db", "Ebsus2", "Bbm"] * 2 + ["Bbm", "Db", "Ebm", "Bbm"] * 3) == ["Bbm", "Db", "Ebm", "Bbm"]

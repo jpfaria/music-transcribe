@@ -52,21 +52,29 @@ def chord_for_bar(chroma: np.ndarray, bass_pc: int | None, bar: int, start: floa
                  bass=bass_name, confidence=round(max(0.0, min(1.0, (s1 - s2) * 10)), 3))
 
 
-_FAMILY = {"maj": "M", "7": "M", "maj7": "M", "sus2": "M", "sus4": "M", "add9": "M", "9": "M",
+# sus2/sus4 have no third, so their family is undetermined ("?") and matches either family on the same root.
+_FAMILY = {"maj": "M", "7": "M", "maj7": "M", "sus2": "?", "sus4": "?", "add9": "M", "9": "M",
            "min": "m", "m7": "m", "dim": "m", "m7b5": "m"}
 _SUFFIX_TO_Q = {v: k for k, v in SUFFIX.items()}
 _NAME_RE = re.compile(r"^([A-G][b#]?)(.*?)(?:/([A-G][b#]?))?$")
 
 
 def chord_family(name: str) -> str:
-    """Root + family ("M" or "m") of a chord name, ignoring the slash bass: "Ebsus2" → "EbM",
-    "Bbm7/F" → "Bbm". Unknown names are returned unchanged."""
+    """Root + family of a chord name, ignoring the slash bass: "Eb7" → "EbM", "Bbm7/F" → "Bbm",
+    "Ebsus2" → "Eb?" (no third: family undetermined). Unknown names are returned unchanged."""
     m = _NAME_RE.match(name.strip())
     if not m:
         return name
     root, suf, _ = m.groups()
     q = _SUFFIX_TO_Q.get(suf)
     return root + _FAMILY[q] if q is not None else name
+
+
+def same_family(a: str, b: str) -> bool:
+    """Loop-match test on chord_family keys: equal, or same root with an undetermined ("?") family on either side."""
+    if a == b:
+        return True
+    return a[:-1] == b[:-1] and "?" in (a[-1], b[-1])
 
 
 def detect_loop(names: list[str], max_period: int = 8, min_match: float = 0.8) -> list[str]:
@@ -78,7 +86,7 @@ def detect_loop(names: list[str], max_period: int = 8, min_match: float = 0.8) -
         if n < 2 * p:
             break
         pairs = [(keys[i], keys[i + p]) for i in range(n - p)]
-        match = sum(a == b for a, b in pairs) / len(pairs)
+        match = sum(same_family(a, b) for a, b in pairs) / len(pairs)
         if match >= min_match:
             return [Counter(names[k::p]).most_common(1)[0][0] for k in range(p)]
     return []
