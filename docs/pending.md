@@ -1,10 +1,10 @@
 # Pendências (state at the end of the final fix wave, 2026-09-29)
 
 ## What passes
-- Fast suite: `uv run pytest -q`, 145 passed, warning-free. Unit tests never touch the real model
+- Fast suite: `uv run pytest -q`, 148 passed, warning-free. Unit tests never touch the real model
   caches (autouse fixture in `tests/conftest.py`).
 - Slow suite: `uv run pytest -m slow -v -s` (CPU, whisper small.en, demucs `--shifts 0`): 3 consecutive
-  passes in 25.8 s, 29.6 s and 27.0 s; after the bass-step/least-squares change, 1 more pass in 26.6 s. Results: bpm 60.1, key Bbm, chords/loop Bbm Db Ebm Bbm, lyrics `[]`,
+  passes in 25.8 s, 29.6 s and 27.0 s; after the bass-step/least-squares change, 1 more pass in 26.6 s; after the family loop/confidence change, 1 more pass in 25.5 s. Results: bpm 60.1, key Bbm, chords/loop Bbm Db Ebm Bbm, lyrics `[]`,
   bass pitch classes = roots, every lead pitch found in guitar ∪ other.
 - Real song: see `docs/real-run.md`.
 
@@ -14,10 +14,13 @@
 - The vocal-activity gate is −40 dB relative to the vocals stem's peak, with an absolute floor: a stem whose
   peak RMS stays under −45 dBFS has no vocals.
 - `--language auto` can misdetect on short vocal passages.
-- Real song (`docs/real-run.md`, run 3): with a least-squares bar length (4.53 s, the song's average; the intro
-  is 4.63 s and later bars about 4.54 s), the chords read the expected loop, but `detect_loop` does not fire:
-  the p=4 match is 0.644 against a 0.8 threshold, because of sus2/sus4/7 variants on the same root. Also, 47 of
-  49 chord margins are under 0.3. A single global bar_len cannot follow the tempo drift.
+- Real song (`docs/real-run.md`, run 4):
+  - bar_len 4.53 s is the song's average (the intro is 4.63 s, later bars about 4.54 s), and the chords read the
+    expected Bbm Db Ebm Bbm cycle.
+  - `detect_loop`, matching by root + family, reaches 0.733 at p=4 (threshold 0.8). Ebsus2 counts as major
+    while its neighbours read Ebm, and the ending (bars 36–45) diverges.
+  - Confidence ×10 leaves 34 of 49 chords under 0.3.
+  - A single global bar_len cannot follow tempo drift.
 
 ## Follow-ups after merge
 The review's own "after merge" triage list was not in the files given to the fix wave. This list is

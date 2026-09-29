@@ -1,4 +1,6 @@
 from __future__ import annotations
+import re
+from collections import Counter
 import numpy as np
 from music_transcribe.schema import Chord, NOTE_NAMES
 
@@ -39,29 +41,46 @@ def chord_for_bar(chroma: np.ndarray, bass_pc: int | None, bar: int, start: floa
                 s -= 0.03  # rarer than triads/sevenths; only win when clearly present
             scored.append((s, root, q))
     scored.sort(reverse=True)
+    # confidence = margin over the runner-up template × 10, clipped to 0..1. On real mixes a correct chord
+    # wins by ≈0.05–0.08 (→ 0.5–0.8); a margin under 0.03 (→ < 0.3) is a genuine toss-up.
     (s1, root, q), s2 = scored[0], scored[1][0]
     name = NOTE_NAMES[root] + SUFFIX[q]
     bass_name = NOTE_NAMES[bass_pc % 12] if bass_pc is not None else NOTE_NAMES[root]
     if bass_pc is not None and bass_pc % 12 != root:
         name += "/" + bass_name
     return Chord(bar=bar, start=float(start), name=name, root=NOTE_NAMES[root], quality=q,
-                 bass=bass_name, confidence=round(max(0.0, min(1.0, (s1 - s2) * 4)), 3))
+                 bass=bass_name, confidence=round(max(0.0, min(1.0, (s1 - s2) * 10)), 3))
+
+
+_FAMILY = {"maj": "M", "7": "M", "maj7": "M", "sus2": "M", "sus4": "M", "add9": "M", "9": "M",
+           "min": "m", "m7": "m", "dim": "m", "m7b5": "m"}
+_SUFFIX_TO_Q = {v: k for k, v in SUFFIX.items()}
+_NAME_RE = re.compile(r"^([A-G][b#]?)(.*?)(?:/([A-G][b#]?))?$")
+
+
+def chord_family(name: str) -> str:
+    """Root + family ("M" or "m") of a chord name, ignoring the slash bass: "Ebsus2" → "EbM",
+    "Bbm7/F" → "Bbm". Unknown names are returned unchanged."""
+    m = _NAME_RE.match(name.strip())
+    if not m:
+        return name
+    root, suf, _ = m.groups()
+    q = _SUFFIX_TO_Q.get(suf)
+    return root + _FAMILY[q] if q is not None else name
 
 
 def detect_loop(names: list[str], max_period: int = 8, min_match: float = 0.8) -> list[str]:
+    """Shortest period p whose bars match the bar p later (by root + family) in at least min_match of
+    cases. Returns, for each position, the most frequent full name there (first seen wins ties)."""
+    keys = [chord_family(n) for n in names]
     n = len(names)
     for p in range(2, max_period + 1):
         if n < 2 * p:
             break
-        pairs = [(names[i], names[i + p]) for i in range(n - p)]
+        pairs = [(keys[i], keys[i + p]) for i in range(n - p)]
         match = sum(a == b for a, b in pairs) / len(pairs)
         if match >= min_match:
-            # majority vote per position
-            out = []
-            for k in range(p):
-                col = names[k::p]
-                out.append(max(set(col), key=col.count))
-            return out
+            return [Counter(names[k::p]).most_common(1)[0][0] for k in range(p)]
     return []
 
 

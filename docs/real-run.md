@@ -137,3 +137,23 @@ Bbm Bbm7 Db Ebsus2 Bbm Bbm Db Ebsus2 Bbm Bbm Db Bbsus4 Bbm Bbm Dbsus2 Ebsus2 Bbs
   triad, p=4 would match 0.778 (diagnostic only, not applied).
 - Chord confidence = (best − second template score) × 4. On this mix nearly every margin is < 0.075, so 47 of 49
   land under 0.3, even where the chord name is right.
+
+## Run 4: family-based `detect_loop` + confidence ×10 (2026-09-29, `--force`)
+
+Same command. Times: tags <1 s, stems 19 s (MPS), lyrics 5 s, harmony 6 s, notes 28 s, render <1 s; 58 s total.
+The grid is unchanged from run 3: 53.0 BPM, bar_len 4.5298, bar0 −2.953, Bbm, 12/8.
+
+| | run 3 | run 4 |
+|---|---|---|
+| loop | `[]` | **`[]`** |
+| chords < 0.3 | 47 / 49 | **34 / 49** (0.3–0.6: 12, ≥ 0.6: 3) |
+
+First 12 chords: Bbsus4 Bbm Db Ebsus2 Bbm Bbm Db Ebm Bbm Bbm Db Ebm.
+Their confidences: 0.14 0.68 0.47 0.06 0.41 0.20 0.12 0.04 0.23 0.03 0.40 0.14.
+
+Why the loop still fails (nothing tuned):
+- The family keys are BbM Bbm DbM EbM Bbm Bbm DbM Ebm … . The p=4 match is **0.733**, against the 0.8 threshold.
+- Of its 12 mismatches, 5 are Ebsus2 (family M under the ruling) vs Ebm, plus Bbsus4 vs Bbm in bar 1. The other 7
+  are in bars 36–45 (the ending).
+- For comparison only (not applied): counting a sus chord as matching either family gives p=4 **0.822**. Keeping
+  the ruling's families but using bars 1–40 only gives **0.833**. Both would detect the loop.

@@ -50,3 +50,21 @@ def test_estimate_key_minor():
     prof = np.zeros(12)
     for p, w in [(10, 3), (1, 2), (5, 2), (3, 1), (8, 1), (0, 0.5)]: prof[p] = w
     assert estimate_key(prof) == "Bbm"
+
+
+def test_chord_family():
+    from music_transcribe.harmony.chords import chord_family
+    assert chord_family("Ebsus2") == "EbM" and chord_family("Db") == "DbM" and chord_family("Bb7") == "BbM"
+    assert chord_family("Bbm") == "Bbm" and chord_family("Bbm7/F") == "Bbm" and chord_family("Bm7b5") == "Bm"
+
+
+def test_detect_loop_matches_by_root_and_family():
+    seq = ["Bbsus4", "Bbm", "Db", "Ebsus2"] + ["Bbm", "Bbm", "Db", "Ebm"] * 4
+    assert detect_loop(seq) == ["Bbm", "Bbm", "Db", "Ebm"]
+
+
+def test_confidence_scale_margin_times_ten():
+    import numpy as np
+    c = np.zeros(12); c[[10, 1, 5]] = 1.0          # Bbm triad
+    ch = chord_for_bar(c, 10, bar=1, start=0.0)
+    assert ch.name == "Bbm" and 0 < ch.confidence <= 1.0
