@@ -34,3 +34,20 @@ def test_fit_grid_jittered_downbeat_within_tolerance():
     changes = [k * 4.0 + d for k, d in zip(range(6), [0.05, -0.05, 0.1, -0.1, 0.0, 0.05])]
     bar0 = fit_grid(changes, 4.0)
     assert -4.0 < bar0 <= 0.2 and abs(bar0) < 0.1
+
+
+def test_refine_bar_len_from_bass_changes():
+    import numpy as np
+    from music_transcribe.harmony.grid import refine_bar_len
+    jit = np.random.default_rng(0).uniform(-0.1, 0.1, 12)
+    t, changes = 0.0, []
+    for i, d in enumerate(jit):
+        changes.append(t + d)
+        t += 9.3 if i == 5 else 4.64          # one two-bar gap (k=2)
+    assert abs(refine_bar_len(changes, 4.46) - 4.64) <= 0.05
+
+
+def test_refine_bar_len_needs_four_usable_intervals():
+    from music_transcribe.harmony.grid import refine_bar_len
+    assert refine_bar_len([0.0, 4.64, 9.28, 13.92], 4.46) == 4.46          # only 3 intervals
+    assert refine_bar_len([0.0, 1.5, 3.0, 4.5, 6.0, 7.5], 4.46) == 4.46    # r≈0.34: not a whole bar

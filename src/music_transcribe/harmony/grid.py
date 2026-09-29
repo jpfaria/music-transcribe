@@ -20,3 +20,22 @@ def fit_grid(root_changes: list[float], bar_len: float) -> float:
     if bar0 > 0.05 * bar_len:
         bar0 -= bar_len
     return float(round(bar0, 3))
+
+
+def refine_bar_len(root_changes: list[float], bar_len0: float, tol: float = 0.25, min_intervals: int = 4) -> float:
+    """Refine a tempogram bar length from the bass root-change intervals.
+
+    Each interval iv between consecutive changes is read as k bars, k = round(iv / bar_len0) ∈ {1..4},
+    and kept when |iv / bar_len0 − k| ≤ tol. With at least min_intervals kept, returns median(iv / k);
+    otherwise bar_len0 unchanged. A few % of tempo error drifts the grid a whole bar within ~25 bars,
+    while the harmonic rhythm pins the bar directly.
+    """
+    if len(root_changes) < 2 or bar_len0 <= 0:
+        return bar_len0
+    iv = np.diff(np.asarray(root_changes, dtype=float))
+    r = iv / bar_len0
+    k = np.round(r)
+    ok = (k >= 1) & (k <= 4) & (np.abs(r - k) <= tol)
+    if ok.sum() < min_intervals:
+        return bar_len0
+    return float(np.median(iv[ok] / k[ok]))

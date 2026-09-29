@@ -6,7 +6,7 @@ from music_transcribe.audio import load_mono
 from music_transcribe.schema import Harmony, Chord
 from music_transcribe.harmony.bassroot import bass_roots, root_changes
 from music_transcribe.harmony.tempo import estimate_tempo
-from music_transcribe.harmony.grid import fit_grid
+from music_transcribe.harmony.grid import fit_grid, refine_bar_len
 from music_transcribe.harmony.chords import chord_for_bar, detect_loop, estimate_key
 
 HARMONIC = ["bass", "piano", "guitar", "other"]
@@ -34,7 +34,10 @@ def analyze(stems: dict[str, Path], sr: int = 22050, mix: Path | None = None) ->
     runs = bass_roots(bass, sr) if bass is not None else []
     changes = root_changes(runs)
     bpm, meter = estimate_tempo(full, sr, changes)
-    bar_len = 4 * 60.0 / bpm
+    bar_len0 = 4 * 60.0 / bpm
+    bar_len = refine_bar_len(changes, bar_len0)
+    if bar_len != bar_len0:
+        bpm = round(240.0 / bar_len, 1)
     bar0 = fit_grid(changes, bar_len)
     hop = 512
     chroma = librosa.feature.chroma_cqt(y=h, sr=sr, hop_length=hop)
