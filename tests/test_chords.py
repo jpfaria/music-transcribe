@@ -28,6 +28,18 @@ def test_half_diminished():
     assert ch.name == "Ebm7b5"
 
 
+def test_root_position_beats_sus_reinterpretation():
+    # Db major (Db-F-Ab) plus overtone leakage at Eb and C that could suggest Ab sus4.
+    c = np.full(12, 0.05)
+    c[1] = 1.0   # Db
+    c[5] = 1.0   # F
+    c[8] = 1.0   # Ab
+    c[3] = 0.45  # Eb overtone leakage
+    c[0] = 0.45  # C overtone leakage
+    ch = chord_for_bar(c, bass_pc=1, bar=1, start=0.0)
+    assert ch.name == "Db"
+
+
 def test_detect_loop():
     seq = ["Bbm", "Db", "Ebm", "Bbm"] * 5 + ["Bbm", "Db"]
     assert detect_loop(seq) == ["Bbm", "Db", "Ebm", "Bbm"]

@@ -1,5 +1,6 @@
 from __future__ import annotations
 import json
+import re
 import subprocess
 from pathlib import Path
 from music_transcribe.schema import LyricLine
@@ -9,15 +10,22 @@ NON_SPEECH = {"[MUSIC]", "[music]", "♪", "♪♪", "(music)", "[BLANK_AUDIO]",
 
 def parse_whisper_json(data: dict) -> list[LyricLine]:
     out: list[LyricLine] = []
+    prev_text: str | None = None
+    prev_conf: float = 1.0
     for seg in data.get("transcription", []):
         text = seg.get("text", "").strip().strip("♪").strip()
         if not text or text in NON_SPEECH:
             continue
+        if re.search(r"[^\W_]", text) is None:
+            continue  # no letter or digit: punctuation-only hallucination (e.g. ". . .")
         toks = [t for t in seg.get("tokens", []) if not t.get("text", "").startswith("[_")]
         ps = [float(t["p"]) for t in toks if "p" in t]
         conf = sum(ps) / len(ps) if ps else 0.5
+        if text == prev_text and conf < 0.6 and prev_conf < 0.6:
+            continue  # repeated low-confidence hallucination
         off = seg.get("offsets", {})
         out.append(LyricLine(off.get("from", 0) / 1000.0, off.get("to", 0) / 1000.0, text, round(conf, 3)))
+        prev_text, prev_conf = text, conf
     return out
 
 

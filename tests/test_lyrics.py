@@ -21,6 +21,29 @@ def test_parse_empty_is_instrumental():
     assert parse_whisper_json({"transcription": []}) == []
 
 
+def _seg(text, p=0.4, from_ms=0, to_ms=1000):
+    return {"offsets": {"from": from_ms, "to": to_ms}, "text": text,
+            "tokens": [{"text": t, "p": p} for t in text.split()] or [{"text": text, "p": p}]}
+
+
+def test_parse_drops_punctuation_only_hallucinations():
+    for text in [". . .", "...", "♪ ♪"]:
+        assert parse_whisper_json({"transcription": [_seg(text)]}) == []
+
+
+def test_parse_drops_repeated_low_confidence_hallucination():
+    data = {"transcription": [_seg("la la", p=0.4, from_ms=0, to_ms=1000),
+                               _seg("la la", p=0.4, from_ms=1000, to_ms=2000)]}
+    lines = parse_whisper_json(data)
+    assert len(lines) == 1
+    assert lines[0].text == "la la"
+
+
+def test_parse_keeps_normal_line_unaffected():
+    lines = parse_whisper_json(WJ)
+    assert len(lines) == 1 and lines[0].text == "Moonlight spills on a crooked street"
+
+
 def test_transcribe_builds_command_and_reads_json(tmp_path):
     import json
     wav = tmp_path / "vocals16.wav"; wav.write_bytes(b"RIFF")

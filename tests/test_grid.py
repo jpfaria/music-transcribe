@@ -11,3 +11,10 @@ def test_fit_grid_first_bar_at_or_before_first_change():
     changes = [0.3 + k * 2.0 for k in range(4)]
     bar0 = fit_grid(changes, 2.0)
     assert -2.0 < bar0 <= 0.3
+
+
+def test_fit_grid_no_phantom_bar_when_song_starts_on_downbeat():
+    changes = [0.0 + k * 4.0 for k in range(6)]
+    bar0 = fit_grid(changes, 4.0)
+    assert -1.0 < bar0 <= 1.0
+    assert abs(bar0) < 0.3

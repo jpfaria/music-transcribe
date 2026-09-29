@@ -33,6 +33,10 @@ def chord_for_bar(chroma: np.ndarray, bass_pc: int | None, bar: int, start: floa
             s = float(np.dot(_vec(root, q), c)) - _COMPLEXITY_PENALTY[q]
             if bass_pc is not None and (bass_pc - root) % 12 not in TEMPLATES[q]:
                 s -= 0.15  # bass note not a chord tone: unlikely
+            if bass_pc is not None and bass_pc % 12 == root:
+                s += 0.10  # bass note is the root: strongest evidence of root position
+            if q in ("sus2", "sus4"):
+                s -= 0.03  # rarer than triads/sevenths; only win when clearly present
             scored.append((s, root, q))
     scored.sort(reverse=True)
     (s1, root, q), s2 = scored[0], scored[1][0]
