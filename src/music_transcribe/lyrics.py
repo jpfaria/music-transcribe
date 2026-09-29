@@ -49,13 +49,17 @@ def transcribe(vocals_wav: Path, model_path: Path, runner=subprocess.run, prompt
 
 
 def vocal_activity(y: np.ndarray, sr: int, hop: int = 512, threshold_db: float = -40.0,
-                    min_dur: float = 0.3) -> list[tuple[float, float]]:
-    """Return (start, end) regions where RMS energy is within threshold_db of the signal's peak RMS."""
+                    min_dur: float = 0.3, min_peak_db: float = -45.0) -> list[tuple[float, float]]:
+    """Return (start, end) regions where RMS energy is within threshold_db of the signal's peak RMS.
+
+    A stem whose peak RMS never exceeds min_peak_db dBFS has no vocals at all (e.g. demucs residue on an
+    instrumental), whatever the relative gate would say: returns [].
+    """
     rms = librosa.feature.rms(y=y, frame_length=hop * 4, hop_length=hop)[0]
     if len(rms) == 0:
         return []
     max_rms = float(rms.max())
-    if max_rms <= 0.0:
+    if max_rms <= 0.0 or 20 * np.log10(max_rms) < min_peak_db:
         return []
     db = 20 * np.log10(np.maximum(rms, 1e-12) / max_rms)
     active = db >= threshold_db

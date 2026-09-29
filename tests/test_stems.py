@@ -8,6 +8,7 @@ def test_separate_invokes_demucs_and_moves_stems(tmp_path):
     def runner(cmd, **kw):
         assert cmd[1:3] == ["-m", "demucs"]
         assert "htdemucs_6s" in cmd
+        assert cmd[cmd.index("--shifts") + 1] == "0"      # deterministic separation
         # emulate demucs output layout: <o>/htdemucs_6s/<track>/<stem>.wav
         d = Path(cmd[cmd.index("-o") + 1]) / "htdemucs_6s" / "song"
         d.mkdir(parents=True)

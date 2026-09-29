@@ -96,3 +96,17 @@ def test_filter_by_activity_drops_lines_outside_active_regions():
     lines = [LyricLine(1.0, 2.0, "kept", 0.9), LyricLine(10.0, 12.0, "dropped", 0.9)]
     out = filter_by_activity(lines, [(0.0, 3.0)])
     assert [l.text for l in out] == ["kept"]
+
+
+def test_vocal_activity_noise_below_absolute_floor_is_empty():
+    y = (0.001 * np.random.default_rng(0).standard_normal(5 * 16000)).astype(np.float32)   # RMS −60 dBFS
+    assert vocal_activity(y, 16000) == []
+
+
+def test_vocal_activity_sine_above_floor_is_one_region():
+    sr = 16000
+    y = np.zeros(3 * sr, dtype=np.float32)
+    t = np.arange(sr) / sr
+    y[sr:2 * sr] = (0.1 * np.sqrt(2)) * np.sin(2 * np.pi * 220 * t)                     # RMS −20 dBFS
+    regions = vocal_activity(y, sr)
+    assert len(regions) == 1 and abs(regions[0][0] - 1.0) < 0.15 and abs(regions[0][1] - 2.0) < 0.15

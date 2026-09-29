@@ -62,7 +62,7 @@ def separate(audio: Path, out_dir: Path, runner=subprocess.run, device: str = "m
 
     def attempt(dev: str):
         shutil.rmtree(work, ignore_errors=True)
-        cmd = [sys.executable, "-m", "demucs", "-n", MODEL, "-d", dev, "-o", str(work), str(audio)]
+        cmd = [sys.executable, "-m", "demucs", "-n", MODEL, "--shifts", "0", "-d", dev, "-o", str(work), str(audio)]
         return runner(cmd, check=False, capture_output=True, text=True, env=env)
 
     r = attempt(device)
