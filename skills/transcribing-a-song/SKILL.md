@@ -12,13 +12,13 @@ Not for songs the user has no file of (no downloading audio).
 
 ## Steps
 1. **CLI.** Use `music-transcribe` if on PATH; else `uv run --project <plugin root> music-transcribe` (plugin root = this skill's base directory, two levels up). `ffmpeg` or `whisper-cli` missing → give `brew install ffmpeg whisper-cpp` and stop.
-2. **Run** `music-transcribe run "<audio>" --yes` in the background and wait for it (minutes). If `~/.cache/music-transcribe/ggml-large-v3.bin` is absent, first say in one line that it downloads Whisper large-v3 (~3 GB), then run. Output: `<audio dir>/<audio name without extension>.transcribe/`.
+2. **Run** `music-transcribe run "<audio>" --yes` in the background and wait for it (minutes). Lyrics language defaults to auto-detect; add `--language pt` (or `en`, …) when the song's language is known. If neither `~/.cache/music-transcribe/ggml-large-v3.bin` nor `~/.cache/whisper/ggml-large-v3.bin` exists, first say in one line that it downloads Whisper large-v3 (~3 GB) and, on the very first run, the demucs weights (~55 MB), then run. Output: `<audio dir>/<audio name without extension>.transcribe/`. A line `letra indisponível: …` means lyrics failed but the rest ran.
 3. **Review** before replying (read the files, don't trust the page):
    - `harmony/harmony.json`: `bpm` plausible for the style (slow blues 40–70, pop 80–130), `meter`, `key`, `loop`. Implausible tempo, or empty `loop` on a clearly repeating song → `harmony "<audio>" --force`, then `notes "<audio>" --force`, then `render "<audio>"` (stages are cached; a plain `run` keeps stale notes). Chords with `confidence < 0.3` are uncertain.
-   - `lyrics/lyrics.json`: count lines with `confidence < 0.6` (shown with `?`). Whisper runs in English only; for a song in another language say the lyrics are unreliable. `tags/tags.json` `embedded_lyrics`, if present, is the file's own text: mention it.
+   - `lyrics/lyrics.json`: count lines with `confidence < 0.6` (shown with `?`). If the run used `--language auto` and the lines look like the wrong language, rerun `lyrics "<audio>" --force --language <xx>` and then `render "<audio>"`. `tags/tags.json` `embedded_lyrics`, if present, is the file's own text: mention it.
    - `notes/<inst>.json`: bar = `floor((start - bar0) / bar_len) + 1`. Count bars with any `low` note and the `reason`s (`bleed`, `weak`, `unstable`). Bars where **every** note is `low` = probably accompaniment/bleed, not the part.
 4. **Publish** `render/cifra.fragment.html` as an artifact (load `artifact-design` first).
-5. **Copy** the whole output folder to the user's transcription folder. João: `~/Library/Mobile Documents/com~apple~CloudDocs/Musica/Transcricoes/<Artista - Título>/` (from `tags.json`; file name if empty).
+5. **Copy** only `render/` and the stage JSON files (`tags/tags.json`, `lyrics/lyrics.json`, `harmony/harmony.json`, `notes/*.json`) to the user's transcription folder, never `stems/` (large WAVs). João: `~/Library/Mobile Documents/com~apple~CloudDocs/Musica/Transcricoes/<Artista - Título>/` (from `tags.json`; file name if empty).
 6. **Reply, 4 lines max:**
    1. key · BPM · meter · loop
    2. lyrics: N uncertain lines (`?`) of M, plus language caveat if any

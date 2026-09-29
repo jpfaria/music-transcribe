@@ -3,6 +3,7 @@ from html import escape
 from music_transcribe.schema import Tags, Harmony, LyricLine, Note, pitch_name
 from music_transcribe.render.chord_diagram import voicing_for, svg
 from music_transcribe.render.tab import bars_for
+from music_transcribe.render.scale import scale_for
 
 CSS = """
 :root{--bg:#f6f3ee;--ink:#1c1a1f;--muted:#6b6470;--rule:#dcd6cc;--panel:#fbf9f5;--accent:#b8651a;--accent-ink:#7a4110;--chord:#2a5f8a;--pre:#fffdf9;--low:#b3261e;--mid:#8a6d00}
@@ -38,6 +39,9 @@ header{display:grid;gap:10px}
 .bar pre{margin:0;padding:10px 12px;background:var(--pre);font-family:"IBM Plex Mono",monospace;font-size:13.5px;line-height:1.35;overflow-x:auto;color:var(--ink)}
 .conf-low{color:var(--low)}.conf-medium{color:var(--mid)}
 .legend{font-family:"IBM Plex Mono",monospace;font-size:13px;color:var(--muted);margin-bottom:14px}
+.scale{display:flex;flex-wrap:wrap;gap:8px;font-family:"IBM Plex Mono",monospace;font-size:18px;margin-bottom:10px}
+.scale span{background:var(--panel);border:1px solid var(--rule);padding:6px 12px;border-radius:4px}
+.scale span.root{background:var(--accent);border-color:var(--accent);color:var(--bg);font-weight:500}
 .chordtag{font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--chord)}
 """
 FONTS = '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Sans:wght@400;500&family=IBM+Plex+Mono:wght@400;500&display=swap">'
@@ -91,8 +95,19 @@ def _tab_section(inst: str, notes: list[Note], harmony: Harmony) -> str:
                     f'<span class="conf-{worst}">{worst}{" · " + ", ".join(reasons) if reasons else ""}</span><span class="time">{_mmss(t0)}</span></figcaption>'
                     f'<pre>{escape(tab)}</pre></figure>')
     return (f'<section><h2>{escape(inst.capitalize())} · tab</h2>'
-            f'<div class="legend">{harmony.meter} · cada "|" é um tempo · b=bend (casa alvo) · br=bend-release · ~=vibrato · /=slide · h=hammer · p=pull · cor = confiança</div>'
+            f'<div class="legend">{harmony.meter} · cada "|" é um tempo · b=bend (casa alvo) · br=bend-release · ~=vibrato · /=slide subindo · \\=slide descendo · h=hammer · p=pull · (6)=confiança baixa · 6?=média · cor = pior confiança do compasso</div>'
             f'<div class="bars">{"".join(figs)}</div></section>')
+
+
+def _scale_section(key: str) -> str:
+    try:
+        sc = scale_for(key)
+    except ValueError:
+        return ""
+    chips = "".join(f'<span class="{"root" if i == 0 else ""}">{escape(n)}</span>' for i, n in enumerate(sc["notes"]))
+    where = "posição aberta" if sc["box_fret"] == 0 else f'box com a tônica na casa {sc["box_fret"]} da 6ª corda'
+    return (f'<section><h2>Escala do solo</h2><div class="scale">{chips}</div>'
+            f'<div class="legend">{escape(sc["name"])} · {where}</div></section>')
 
 
 def _head_parts(title: str) -> list[str]:
@@ -114,6 +129,7 @@ def _body_parts(tags: Tags, harmony: Harmony, lyrics: list[LyricLine] | None, no
     parts.append('<div class="cols"><section><h2>Letra</h2>' + _lyrics(harmony, lyrics) + "</section>")
     parts.append('<section><h2>Acordes por compasso</h2><div class="legend">' + " ".join(
         f'<span class="{"conf-low" if c.confidence < 0.3 else ""}">{c.bar}:{escape(c.name)}</span>' for c in harmony.chords) + "</div></section></div>")
+    parts.append(_scale_section(harmony.key))
     for inst in ("guitar", "bass"):
         if inst in notes_by_inst:
             parts.append(_tab_section(inst, notes_by_inst[inst], harmony))

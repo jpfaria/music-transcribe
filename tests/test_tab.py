@@ -51,3 +51,21 @@ def test_bars_for_rejects_nonpositive_bar_len():
     h = Harmony(120, "4/4", "C", 0.0, 0.0)
     with pytest.raises(ValueError):
         bars_for([n(0.0, 70, 6, 0)], h, "guitar")
+
+
+def test_confidence_marks_in_tokens():
+    low = Note(0, 0.3, 70, 0.8, confidence="low", reason="weak", string=0, fret=6)
+    med = Note(0, 0.3, 70, 0.8, articulation="bend:2", confidence="medium", reason="chord", string=0, fret=6)
+    assert token(low) == "(6)"
+    assert token(med) == "6b8?"
+
+
+def test_slide_down_uses_backslash_and_clamps_negative_target():
+    assert token(n(0, 70, 9, 0, "slide:68")) == "9\\7"
+    assert token(n(0, 70, 1, 0, "slide:66")) == "(1\\0)"      # target fret −3 → 0, marked low
+
+
+def test_bar_tab_widens_for_confidence_marks():
+    notes = [Note(0.0, 0.3, 70, 0.8, confidence="low", string=0, fret=12), n(1.0, 65, 6, 1)]
+    lines = bar_tab(notes, 0.0, 2.0, "4/4", "guitar").splitlines()
+    assert "(12)" in lines[0] and len({len(l) for l in lines}) == 1

@@ -5,23 +5,39 @@ STRING_NAMES = {"guitar": "eBGDAE", "bass": "GDAE"}
 CELL = 3
 
 
-def token(n: Note) -> str:
+def _articulated(n: Note) -> tuple[str, bool]:
+    """Token text without the confidence mark, plus whether the token itself is unreliable."""
     f = "" if n.fret is None else str(n.fret)
     a = n.articulation
     if a.startswith("bend:") and n.fret is not None:
-        return f"{f}b{n.fret + int(a.split(':')[1])}"
+        return f"{f}b{n.fret + int(a.split(':')[1])}", False
     if a == "bend-release":
-        return f"{f}br"
+        return f"{f}br", False
     if a == "vibrato":
-        return f"{f}~"
+        return f"{f}~", False
     if a.startswith("slide:") and n.fret is not None and n.string is not None:
-        # target fret on the same string
-        return f"{f}/{n.fret + (int(a.split(':')[1]) - n.pitch)}"
+        # target fret on the same string; "/" slides up, "\\" slides down
+        target = n.fret + (int(a.split(":")[1]) - n.pitch)
+        if target < 0:
+            return f"{f}\\0", True
+        sep = "/" if target >= n.fret else "\\"
+        return f"{f}{sep}{target}", False
     if a == "hammer":
-        return f"h{f}"
+        return f"h{f}", False
     if a == "pull":
-        return f"p{f}"
-    return f
+        return f"p{f}", False
+    return f, False
+
+
+def token(n: Note) -> str:
+    """Tab token for a note: low confidence → "(6)", medium → "6?", high → "6"."""
+    t, unreliable = _articulated(n)
+    conf = "low" if unreliable else n.confidence
+    if conf == "low":
+        return f"({t})"
+    if conf == "medium":
+        return f"{t}?"
+    return t
 
 
 def bar_tab(notes: list[Note], bar_start: float, bar_len: float, meter: str, instrument: str) -> str:

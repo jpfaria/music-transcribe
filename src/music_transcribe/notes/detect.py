@@ -13,14 +13,26 @@ def _basic_pitch_predict(path: Path) -> list[tuple[float, float, int, float]]:
     return [(float(s), float(e), int(p), float(a)) for s, e, p, a, _ in events]
 
 
-def raw_notes(wav: Path, predictor=None, min_amp: float = 0.45) -> list[Note]:
+POLYPHONIC = {"piano"}
+
+
+def raw_notes(wav: Path, predictor=None, min_amp: float = 0.3, instrument: str = "guitar") -> list[Note]:
+    """basic-pitch notes above min_amp. Piano keeps simultaneous notes. Other instruments keep only
+    the loudest of notes starting within 60 ms of each other; a kept note that won over at least one
+    suppressed note is marked medium / "chord" (it was probably a chord, and the tab shows one note)."""
     events = (predictor or _basic_pitch_predict)(wav)
     events = sorted((e for e in events if e[3] >= min_amp), key=lambda e: e[0])
+    if instrument in POLYPHONIC:
+        return [Note(round(s, 3), round(e, 3), p, round(a, 3)) for s, e, p, a in events]
     out: list[Note] = []
     for s, e, p, a in events:
-        louder_overlap = any(abs(o[0] - s) < 0.06 and o[3] > a for o in events)
-        if not louder_overlap:
-            out.append(Note(round(s, 3), round(e, 3), p, round(a, 3)))
+        near = [o for o in events if abs(o[0] - s) < 0.06 and o != (s, e, p, a)]
+        if any(o[3] > a for o in near):
+            continue
+        n = Note(round(s, 3), round(e, 3), p, round(a, 3))
+        if any(o[3] < a for o in near):
+            n.confidence, n.reason = "medium", "chord"
+        out.append(n)
     return out
 
 

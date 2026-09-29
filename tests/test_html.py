@@ -29,3 +29,10 @@ def test_full_document_wraps_fragment():
     assert '<meta charset="utf-8">' in html
     assert html.index("<title>") < html.index("</head>")
     assert html.endswith("</html>")
+
+
+def test_html_scale_section_and_confidence_legend():
+    html = cifra_html(Tags(), H, [], {"guitar": [Note(1.0, 1.3, 70, 0.8, confidence="medium", string=0, fret=6)]})
+    assert "Escala do solo" in html
+    assert '<span class="root">Bb</span>' in html and "casa 6" in html
+    assert "6?" in html and "(6)=confiança baixa" in html

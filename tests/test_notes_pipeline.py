@@ -85,3 +85,20 @@ def test_touching_pair_contour_drift_is_slide(tmp_path):
     notes = transcribe_instrument(wav, "guitar", harmony, predictor=fake_predictor)
 
     assert notes[0].articulation == "slide:61"
+
+
+def test_transcribe_instrument_keeps_chord_flag(tmp_path):
+    y = sine_note(midi_to_hz(58), 0.6, sr=SR)
+    wav = write_wav(tmp_path / "c.wav", y, sr=SR)
+    fake = lambda p: [(0.0, 0.5, 58, 0.9), (0.01, 0.5, 62, 0.5)]
+    notes = transcribe_instrument(wav, "guitar", Harmony(120.0, "4/4", "Bbm", 0.0, 2.0), predictor=fake)
+    assert [n.pitch for n in notes] == [58]
+    assert (notes[0].confidence, notes[0].reason) == ("medium", "chord")
+
+
+def test_transcribe_instrument_piano_passes_instrument(tmp_path):
+    y = sine_note(midi_to_hz(60), 0.6, sr=SR)
+    wav = write_wav(tmp_path / "p.wav", y, sr=SR)
+    fake = lambda p: [(0.0, 0.5, 60, 0.9), (0.01, 0.5, 64, 0.8)]
+    notes = transcribe_instrument(wav, "piano", Harmony(120.0, "4/4", "C", 0.0, 2.0), predictor=fake)
+    assert sorted(n.pitch for n in notes) == [60, 64]

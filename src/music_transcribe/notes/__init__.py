@@ -39,14 +39,17 @@ def _contour_drift(cents: np.ndarray) -> float:
 def transcribe_instrument(wav: Path, instrument: str, harmony: Harmony, predictor=None) -> list[Note]:
     import librosa
     y, sr = load_mono(wav, 22050)
-    notes = raw_notes(wav, predictor=predictor)
+    notes = raw_notes(wav, predictor=predictor, instrument=instrument)
     bleed = mark_bleed_runs(notes)
     hop_s = 256 / sr
     drifts: list[float] = []
     for i, n in enumerate(notes):
         cents, voiced = f0_contour(y, sr, n)
         n.articulation = classify_contour(cents, hop_s)
-        n.confidence, n.reason = score(n, voiced, i in bleed)
+        conf, reason = score(n, voiced, i in bleed)
+        if n.reason == "chord" and conf == "high":
+            conf, reason = "medium", "chord"   # keep raw_notes' chord flag unless scoring found worse
+        n.confidence, n.reason = conf, reason
         drifts.append(_contour_drift(cents))
     oenv = librosa.onset.onset_strength(y=y, sr=sr, hop_length=512)
     for i in range(1, len(notes)):

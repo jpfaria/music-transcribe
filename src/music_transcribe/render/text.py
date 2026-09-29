@@ -1,6 +1,7 @@
 from __future__ import annotations
 from music_transcribe.schema import Tags, Harmony, LyricLine, Note
 from music_transcribe.render.tab import bars_for, STRING_NAMES
+from music_transcribe.render.scale import scale_for
 
 
 def _mmss(t: float) -> str:
@@ -24,10 +25,16 @@ def cifra_txt(tags: Tags, harmony: Harmony, lyrics: list[LyricLine] | None, note
         out.append("(instrumental)")
     for l in lyrics or []:
         out.append(f"[{_mmss(l.start)}] {l.text}{'' if l.confidence >= 0.6 else ' (?)'}")
+    try:
+        sc = scale_for(harmony.key)
+        where = "posição aberta" if sc["box_fret"] == 0 else f"tônica na casa {sc['box_fret']} da 6ª corda"
+        out += ["", "ESCALA DO SOLO", f"{sc['name']}: {' '.join(sc['notes'])}  ({where})"]
+    except ValueError:
+        pass
     for inst, notes in notes_by_inst.items():
         if inst not in STRING_NAMES:
             continue
-        out += ["", f"TAB — {inst.upper()}  (b=bend, br=bend-release, ~=vibrato, /=slide, h=hammer, p=pull)"]
+        out += ["", f"TAB — {inst.upper()}  (b=bend, br=bend-release, ~=vibrato, /=slide subindo, \\=slide descendo, h=hammer, p=pull, (6)=confiança baixa, 6?=média)"]
         for bar, tab in bars_for(notes, harmony, inst):
             chord = next((c.name for c in harmony.chords if c.bar == bar), "")
             low = sum(1 for n in notes if n.confidence == "low" and harmony.bar0 + (bar - 1) * harmony.bar_len <= n.start < harmony.bar0 + bar * harmony.bar_len)
