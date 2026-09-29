@@ -22,20 +22,27 @@ def fit_grid(root_changes: list[float], bar_len: float) -> float:
     return float(round(bar0, 3))
 
 
-def refine_bar_len(root_changes: list[float], bar_len0: float, tol: float = 0.25, min_intervals: int = 4) -> float:
-    """Refine a tempogram bar length from the bass root-change intervals.
+def refine_bar_len(root_changes: list[float], bar_len0: float, tol: float = 0.25, min_points: int = 4) -> float:
+    """Refine a tempogram bar length by a least-squares fit of bass root-change times on integer bar indices.
 
-    Each interval iv between consecutive changes is read as k bars, k = round(iv / bar_len0) ∈ {1..4},
-    and kept when |iv / bar_len0 − k| ≤ tol. With at least min_intervals kept, returns median(iv / k);
-    otherwise bar_len0 unchanged. A few % of tempo error drifts the grid a whole bar within ~25 bars,
-    while the harmonic rhythm pins the bar directly.
+    The first change gets index 0. Each later change is measured from the last kept change: ratio
+    r = Δt / bar_len0, k = round(r). It is kept with index n_last + k when k ≥ 1 and |r − k| ≤ tol;
+    otherwise it is skipped (sub-bar or off-grid change) and the next one is measured from the same
+    kept point. With at least min_points kept, bar_len = slope of polyfit(n, t, 1), accepted only when
+    0.75 < bar_len / bar_len0 < 1.33; otherwise bar_len0 is returned unchanged.
     """
-    if len(root_changes) < 2 or bar_len0 <= 0:
+    if len(root_changes) < min_points or bar_len0 <= 0:
         return bar_len0
-    iv = np.diff(np.asarray(root_changes, dtype=float))
-    r = iv / bar_len0
-    k = np.round(r)
-    ok = (k >= 1) & (k <= 4) & (np.abs(r - k) <= tol)
-    if ok.sum() < min_intervals:
+    t = [float(x) for x in root_changes]
+    ns, ts = [0], [t[0]]
+    for ti in t[1:]:
+        r = (ti - ts[-1]) / bar_len0
+        k = round(r)
+        if k < 1 or abs(r - k) > tol:
+            continue
+        ns.append(ns[-1] + k)
+        ts.append(ti)
+    if len(ns) < min_points:
         return bar_len0
-    return float(np.median(iv[ok] / k[ok]))
+    bar_len = float(np.polyfit(np.asarray(ns, dtype=float), np.asarray(ts), 1)[0])
+    return bar_len if 0.75 < bar_len / bar_len0 < 1.33 else bar_len0

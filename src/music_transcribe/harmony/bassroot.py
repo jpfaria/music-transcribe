@@ -11,7 +11,7 @@ class RootRun:
     dur: float
 
 
-def bass_roots(y: np.ndarray, sr: int, step: float = 0.25, min_dur: float = 0.75,
+def bass_roots(y: np.ndarray, sr: int, step: float = 0.05, min_dur: float = 0.75,
                fmin: float = 30.0, fmax: float = 200.0) -> list[RootRun]:
     hop = 1024
     f0, vf, vp = librosa.pyin(y, fmin=fmin, fmax=fmax, sr=sr, frame_length=4096, hop_length=hop)

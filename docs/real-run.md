@@ -99,3 +99,41 @@ Bass root runs up to the end of bar 12 (start s, root, dur s):
   bass changes. For example, bar 3 starts at 6.81 while Db enters at 5.5. Every bar therefore straddles two
   chords, the confidences collapse, and `detect_loop` finds no repeat.
 - For comparison, `fit_grid` with bar_len 4.64 gives bar0 −3.806 ≡ +0.83 s, in phase with the bass entry at 0.75 s.
+
+## Re-run after `bass_roots(step=0.05)` + least-squares `refine_bar_len` (2026-09-29, `--force`)
+
+Same command. Times: tags <1 s, stems 20 s (MPS), lyrics 5 s, harmony 6 s, notes 28 s, render <1 s; 59 s total.
+
+| | tempogram only (run 1) | median refine (run 2) | least-squares refine (run 3) |
+|---|---|---|---|
+| bpm | 53.8 | 53.3 | 53.0 |
+| bar_len | 4.461 | 4.500 | **4.5298** (tempogram 4.5541 in this run) |
+| bar0 | −0.51 | −2.186 | −2.953 (bar lines at 1.58, 6.11, 10.64, 15.17 …) |
+| loop | `[]` | `[]` | `[]` |
+| chords < 0.3 | 43 / 49 | 47 / 49 | 47 / 49 |
+
+First 12 chords (bar, start, name, bass, confidence):
+```
+ 1  -2.953 Bbsus4 Bb 0.055     7  24.226 Db     Db 0.049
+ 2   1.577 Bbm    Bb 0.271     8  28.755 Ebm    Eb 0.019
+ 3   6.107 Db     Db 0.186     9  33.285 Bbm    Bb 0.100
+ 4  10.636 Ebsus2 Eb 0.025    10  37.815 Bbm    Bb 0.012
+ 5  15.166 Bbm    Bb 0.163    11  42.345 Db     Db 0.159
+ 6  19.696 Bbm    Bb 0.079    12  46.875 Ebm    Eb 0.057
+```
+All 49: Bbsus4 Bbm Db Ebsus2 Bbm Bbm Db Ebm Bbm Bbm Db Ebm Bbm Bbm Db Ebm Bbm Bbm Db Eb Bbm Bbm Db Ebm Bbm Bbm Db Eb
+Bbm Bbm7 Db Ebsus2 Bbm Bbm Db Ebsus2 Bbm Bbm Db Bbsus4 Bbm Bbm Dbsus2 Ebsus2 Bbsus4 Ebm Ebsus2 Bbm Bbm.
+
+### Diagnosis (nothing was tuned)
+- With 50 ms steps the bass changes are 0.85, 5.5, 10.1, 14.75, (F 18.15, 0.8 s), 19.3, 23.95, 28.6, 33.25 … .
+  The fit keeps 35 of 37 changes, and every index looks right: e.g. (7, 33.25), (9, 42.4), … (44, 200.2).
+- The kept points themselves put bars 0–7 at 4.63 s and the rest at about 4.53–4.55 s (0.85 → 200.2 s over 44 bars
+  = 4.53). The band seems to speed up about 2% after the intro, so the one global bar_len of 4.53 is the true
+  average, and the manual 4.64 describes the intro only.
+- The grid is now phased on the harmony: bars 2–5 read Bbm Db Ebsus2 Bbm, i.e. the expected loop, with bar 1 as
+  the intro pickup. Bar lines still fall about 0.6 s after the early bass changes (1.58 vs 0.85, 6.11 vs 5.5).
+- `detect_loop` needs ≥ 0.8 of bars to equal the bar p later. At p=4 the match is 0.644 (p=8: 0.683). Mismatches
+  are name variants on the same root: Ebsus2 / Ebm / Eb, Bbsus4 / Bbm / Bbm7. With those folded to the minor
+  triad, p=4 would match 0.778 (diagnostic only, not applied).
+- Chord confidence = (best − second template score) × 4. On this mix nearly every margin is < 0.075, so 47 of 49
+  land under 0.3, even where the chord name is right.

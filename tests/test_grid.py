@@ -36,18 +36,28 @@ def test_fit_grid_jittered_downbeat_within_tolerance():
     assert -4.0 < bar0 <= 0.2 and abs(bar0) < 0.1
 
 
-def test_refine_bar_len_from_bass_changes():
+def test_refine_bar_len_least_squares_with_missing_changes():
     import numpy as np
     from music_transcribe.harmony.grid import refine_bar_len
-    jit = np.random.default_rng(0).uniform(-0.1, 0.1, 12)
-    t, changes = 0.0, []
-    for i, d in enumerate(jit):
-        changes.append(t + d)
-        t += 9.3 if i == 5 else 4.64          # one two-bar gap (k=2)
-    assert abs(refine_bar_len(changes, 4.46) - 4.64) <= 0.05
+    jit = np.random.default_rng(0).uniform(-0.12, 0.12, 21)
+    changes = [0.75 + 4.643 * k + jit[k] for k in range(21) if k not in (5, 11)]
+    assert abs(refine_bar_len(changes, 4.46) - 4.643) <= 0.02
 
 
-def test_refine_bar_len_needs_four_usable_intervals():
+def test_refine_bar_len_skips_sub_bar_changes():
     from music_transcribe.harmony.grid import refine_bar_len
-    assert refine_bar_len([0.0, 4.64, 9.28, 13.92], 4.46) == 4.46          # only 3 intervals
-    assert refine_bar_len([0.0, 1.5, 3.0, 4.5, 6.0, 7.5], 4.46) == 4.46    # r≈0.34: not a whole bar
+    bar = 4.643
+    changes = sorted([0.75 + bar * k for k in range(10)] + [0.75 + bar * k + 1.6 for k in (2, 6)])
+    assert abs(refine_bar_len(changes, 4.46) - bar) <= 0.02
+
+
+def test_refine_bar_len_needs_four_points():
+    from music_transcribe.harmony.grid import refine_bar_len
+    assert refine_bar_len([0.0, 4.64, 9.28], 4.46) == 4.46
+
+
+def test_refine_bar_len_garbage_intervals_unchanged():
+    from music_transcribe.harmony.grid import refine_bar_len
+    b = 4.46
+    garbage = [0.0] + [b * x for x in (0.45, 1.45, 2.45, 3.45, 4.45, 5.5, 6.55)]   # always ~half a bar off-grid
+    assert refine_bar_len(garbage, b) == b
